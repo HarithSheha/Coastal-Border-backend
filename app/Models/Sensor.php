@@ -32,8 +32,8 @@ class Sensor extends Model
         return $this->hasMany(SensorReading::class);
     }
 
-    public function reports(): HasMany
+    public function liveReports(): HasMany
     {
-        return $this->hasMany(Report::class);
+        return $this->hasMany(LiveReport::class);
     }
 }

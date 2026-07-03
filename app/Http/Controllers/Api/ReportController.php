@@ -11,16 +11,16 @@ class ReportController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $reports = Report::with(['zone', 'sensor'])
-            ->when($request->status,   fn ($q, $v) => $q->where('status', $v))
-            ->when($request->severity, fn ($q, $v) => $q->where('severity', $v))
-            ->when($request->type,     fn ($q, $v) => $q->where('type', $v))
-            ->when($request->zone_id,  fn ($q, $v) => $q->where('zone_id', $v))
-            ->when($request->search,   fn ($q, $v) => $q->where(function ($q) use ($v) {
-                $q->where('title', 'like', "%{$v}%")
+        $reports = Report::with(['zone', 'urgency'])
+            ->when($request->zone_id,    fn ($q, $v) => $q->where('zone_id', $v))
+            ->when($request->urgency_id, fn ($q, $v) => $q->where('urgency_id', $v))
+            ->when($request->date,       fn ($q, $v) => $q->whereDate('date', $v))
+            ->when($request->search,     fn ($q, $v) => $q->where(function ($q) use ($v) {
+                $q->where('address', 'like', "%{$v}%")
                   ->orWhere('description', 'like', "%{$v}%")
-                  ->orWhere('reporter_name', 'like', "%{$v}%");
+                  ->orWhere('name', 'like', "%{$v}%");
             }))
+            ->orderByDesc('date')
             ->orderByDesc('created_at')
             ->get();
 
@@ -30,52 +30,50 @@ class ReportController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'title'            => 'required|string|max:255',
+            'date'             => 'required|date',
+            'latitude'         => 'required|numeric|between:-90,90',
+            'longitude'        => 'required|numeric|between:-180,180',
+            'address'          => 'required|string|max:255',
+            'zone_id'          => 'required|exists:zones,id',
+            'color'            => 'required|string|max:50',
+            'number_of_people' => 'required|integer|min:0',
             'description'      => 'nullable|string',
-            'type'             => 'required|in:intrusion,vandalism,suspicious,environmental,sensor_alert,other',
-            'severity'         => 'required|in:low,medium,high,critical',
-            'status'           => 'sometimes|in:open,investigating,resolved,dismissed',
-            'source'           => 'required|in:mobile,sensor,manual',
-            'zone_id'          => 'nullable|exists:zones,id',
-            'sensor_id'        => 'nullable|exists:sensors,id',
-            'reporter_name'    => 'required|string|max:255',
-            'reporter_contact' => 'nullable|string|max:255',
-            'latitude'         => 'nullable|numeric|between:-90,90',
-            'longitude'        => 'nullable|numeric|between:-180,180',
-            'image_url'        => 'nullable|string|max:500',
+            'photo'            => 'nullable|string|max:255',
+            'name'             => 'required|string|max:100',
+            'phone'            => 'required|string|max:20',
+            'urgency_id'       => 'required|exists:urgencies,urgency_id',
         ]);
 
         $report = Report::create($data);
 
-        return response()->json($report->load(['zone', 'sensor']), 201);
+        return response()->json($report->load(['zone', 'urgency']), 201);
     }
 
     public function show(Report $report): JsonResponse
     {
-        return response()->json($report->load(['zone', 'sensor']));
+        return response()->json($report->load(['zone', 'urgency']));
     }
 
     public function update(Request $request, Report $report): JsonResponse
     {
         $data = $request->validate([
-            'title'            => 'sometimes|string|max:255',
+            'date'             => 'sometimes|date',
+            'latitude'         => 'sometimes|numeric|between:-90,90',
+            'longitude'        => 'sometimes|numeric|between:-180,180',
+            'address'          => 'sometimes|string|max:255',
+            'zone_id'          => 'sometimes|exists:zones,id',
+            'color'            => 'sometimes|string|max:50',
+            'number_of_people' => 'sometimes|integer|min:0',
             'description'      => 'nullable|string',
-            'type'             => 'sometimes|in:intrusion,vandalism,suspicious,environmental,sensor_alert,other',
-            'severity'         => 'sometimes|in:low,medium,high,critical',
-            'status'           => 'sometimes|in:open,investigating,resolved,dismissed',
-            'source'           => 'sometimes|in:mobile,sensor,manual',
-            'zone_id'          => 'nullable|exists:zones,id',
-            'sensor_id'        => 'nullable|exists:sensors,id',
-            'reporter_name'    => 'sometimes|string|max:255',
-            'reporter_contact' => 'nullable|string|max:255',
-            'latitude'         => 'nullable|numeric|between:-90,90',
-            'longitude'        => 'nullable|numeric|between:-180,180',
-            'image_url'        => 'nullable|string|max:500',
+            'photo'            => 'nullable|string|max:255',
+            'name'             => 'sometimes|string|max:100',
+            'phone'            => 'sometimes|string|max:20',
+            'urgency_id'       => 'sometimes|exists:urgencies,urgency_id',
         ]);
 
         $report->update($data);
 
-        return response()->json($report->load(['zone', 'sensor']));
+        return response()->json($report->load(['zone', 'urgency']));
     }
 
     public function destroy(Report $report): JsonResponse

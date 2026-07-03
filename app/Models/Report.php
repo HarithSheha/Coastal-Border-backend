@@ -2,18 +2,24 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Report extends Model
 {
-    use HasUuids;
+    protected $primaryKey = 'report_id';
 
     protected $fillable = [
-        'title', 'description', 'type', 'severity', 'status', 'source',
-        'zone_id', 'sensor_id', 'reporter_name', 'reporter_contact',
-        'latitude', 'longitude', 'image_url',
+        'date', 'latitude', 'longitude', 'address', 'zone_id',
+        'color', 'number_of_people', 'description', 'photo',
+        'name', 'phone', 'urgency_id',
+    ];
+
+    protected $casts = [
+        'date'             => 'date',
+        'latitude'         => 'decimal:8',
+        'longitude'        => 'decimal:8',
+        'number_of_people' => 'integer',
     ];
 
     public function zone(): BelongsTo
@@ -21,8 +27,8 @@ class Report extends Model
         return $this->belongsTo(Zone::class);
     }
 
-    public function sensor(): BelongsTo
+    public function urgency(): BelongsTo
     {
-        return $this->belongsTo(Sensor::class);
+        return $this->belongsTo(Urgency::class);
     }
 }

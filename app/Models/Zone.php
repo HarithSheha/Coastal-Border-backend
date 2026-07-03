@@ -24,4 +24,9 @@ class Zone extends Model
     {
         return $this->hasMany(Report::class);
     }
+
+    public function liveReports(): HasMany
+    {
+        return $this->hasMany(LiveReport::class);
+    }
 }

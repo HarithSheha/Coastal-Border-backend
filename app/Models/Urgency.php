@@ -1,0 +1,20 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Urgency extends Model
+{
+    protected $primaryKey = 'urgency_id';
+
+    protected $fillable = [
+        'urgency_level',
+    ];
+
+    public function reports(): HasMany
+    {
+        return $this->hasMany(Report::class);
+    }
+}

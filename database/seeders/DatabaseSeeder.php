@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Zone;
 use App\Models\Sensor;
-use App\Models\Report;
+use App\Models\LiveReport;
 use App\Models\SensorReading;
 use Illuminate\Database\Seeder;
 
@@ -40,8 +40,8 @@ class DatabaseSeeder extends Seeder
 
         [$motN1, $thermE1, $camC1, $vibS1, $gasW1, $smokeN2, $motE2, $thermC2] = $sensors;
 
-        // ── Reports ────────────────────────────────────────────────────────
-        $reports = [
+        // ── Live Reports ───────────────────────────────────────────────────
+        $liveReports = [
             [
                 'title'            => 'Unauthorised Entry — North Gate',
                 'description'      => 'Individual spotted crossing the northern perimeter fence at approximately 02:15. Thermal imaging confirmed movement heading south-east.',
@@ -108,14 +108,14 @@ class DatabaseSeeder extends Seeder
             ],
         ];
 
-        foreach ($reports as $r) {
+        foreach ($liveReports as $r) {
             $createdAt = $r['created_at'];
             unset($r['created_at']);
-            $report = Report::create($r);
-            $report->timestamps = false;
-            $report->created_at = $createdAt;
-            $report->updated_at = $createdAt;
-            $report->save();
+            $liveReport = LiveReport::create($r);
+            $liveReport->timestamps = false;
+            $liveReport->created_at = $createdAt;
+            $liveReport->updated_at = $createdAt;
+            $liveReport->save();
         }
 
         // ── Sensor Readings (sample readings per sensor) ───────────────────

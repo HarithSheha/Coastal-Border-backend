@@ -143,7 +143,7 @@
   <div class="cover-meta">
     <div class="cover-meta-item"><div class="val">Laravel 13</div><div class="lbl">Framework</div></div>
     <div class="cover-meta-item"><div class="val">MySQL</div><div class="lbl">Database</div></div>
-    <div class="cover-meta-item"><div class="val">18</div><div class="lbl">API Endpoints</div></div>
+    <div class="cover-meta-item"><div class="val">28</div><div class="lbl">API Endpoints</div></div>
     <div class="cover-meta-item"><div class="val">PHP 8.3</div><div class="lbl">Runtime</div></div>
   </div>
   <div class="cover-footer">Coastal Border Security System &nbsp;·&nbsp; 2026</div>
@@ -265,7 +265,7 @@ Documents\Dev\costal-back\Coastal-Border-backend\</pre>
      5. MIGRATE & SEED
 ════════════════════════════════════════════════════════════════ -->
   <h2 class="section-title" id="migrate"><span class="num">5</span> Run Migrations &amp; Seed Data</h2>
-  <p>Migrations create all the database tables. The seeder inserts sample data (5 zones, 8 sensors, 8 reports, 80 sensor readings).</p>
+  <p>Migrations create all the database tables. The seeder inserts sample data (5 zones, 8 sensors, 8 live reports, 80 sensor readings). The new <code>reports</code> and <code>urgencies</code> tables are not seeded — create urgency levels and sighting reports yourself via the API (see §8).</p>
 
   <pre><span class="comment"># Run migrations only (creates tables)</span>
 <span class="cmd">php artisan migrate</span>
@@ -278,18 +278,26 @@ Documents\Dev\costal-back\Coastal-Border-backend\</pre>
 
   <p>After a successful run you will see:</p>
   <pre><span class="comment">INFO  Running migrations.</span>
-  <span class="val">2024_01_01_000010_create_zones_table</span> .............. 25ms DONE
-  <span class="val">2024_01_01_000011_create_sensors_table</span> ............ 31ms DONE
-  <span class="val">2024_01_01_000012_create_reports_table</span> ............ 38ms DONE
-  <span class="val">2024_01_01_000013_create_sensor_readings_table</span> .... 20ms DONE
+  <span class="val">2024_01_01_000010_create_zones_table</span> .............................. 25ms DONE
+  <span class="val">2024_01_01_000011_create_sensors_table</span> ............................ 31ms DONE
+  <span class="val">2024_01_01_000012_create_reports_table</span> ............................ 38ms DONE
+  <span class="val">2024_01_01_000013_create_sensor_readings_table</span> .................... 20ms DONE
+  <span class="val">2026_07_03_000001_rename_reports_table_to_live_reports</span> ............ 18ms DONE
+  <span class="val">2026_07_03_000002_create_urgencies_table</span> .......................... 15ms DONE
+  <span class="val">2026_07_03_000003_create_reports_table</span> ............................ 22ms DONE
 
 <span class="comment">INFO  Seeding database.</span>
   <span class="val">Database\Seeders\DatabaseSeeder</span> .................. RUNNING
   <span class="val">Database\Seeders\DatabaseSeeder</span> .................. DONE</pre>
 
+  <div class="alert warn">
+    <span class="alert-icon">⚠️</span>
+    <div>The original <code>2024_01_01_000012_create_reports_table</code> migration still creates a table literally named <code>reports</code> — the very next migration (<code>rename_reports_table_to_live_reports</code>) immediately renames it to <code>live_reports</code>, freeing up the <code>reports</code> name for the new sighting-reports table created afterwards. Migrations must run in this order; don't reorder or skip them.</div>
+  </div>
+
   <div class="alert success">
     <span class="alert-icon">✅</span>
-    <div>Tables created: <strong>zones, sensors, reports, sensor_readings</strong> plus the default Laravel tables (users, cache, jobs, etc.).</div>
+    <div>Tables created: <strong>zones, sensors, live_reports, sensor_readings, urgencies, reports</strong> plus the default Laravel tables (users, cache, jobs, etc.). Note <code>reports</code> and <code>live_reports</code> are two <em>different</em> tables now — see §7 for the distinction.</div>
   </div>
 
 
@@ -320,6 +328,8 @@ Documents\Dev\costal-back\Coastal-Border-backend\</pre>
     <span class="key">"zones"</span>:           <span class="url">"http://localhost:8000/api/zones"</span>,
     <span class="key">"sensors"</span>:         <span class="url">"http://localhost:8000/api/sensors"</span>,
     <span class="key">"reports"</span>:         <span class="url">"http://localhost:8000/api/reports"</span>,
+    <span class="key">"urgencies"</span>:       <span class="url">"http://localhost:8000/api/urgencies"</span>,
+    <span class="key">"live_reports"</span>:    <span class="url">"http://localhost:8000/api/live-reports"</span>,
     <span class="key">"sensor_readings"</span>: <span class="url">"http://localhost:8000/api/sensor-readings"</span>
   }
 }</pre>
@@ -355,15 +365,42 @@ Documents\Dev\costal-back\Coastal-Border-backend\</pre>
     </tbody>
   </table>
 
-  <h3>Reports</h3>
+  <h3>Reports <span class="pill pill-blue">sighting reports</span></h3>
+  <p>Public/field sighting reports — a person seen, a boat spotted, etc. — filed against a zone with an urgency level. Primary key is <code>report_id</code> (auto-increment integer), not a UUID.</p>
   <table>
     <thead><tr><th>Method</th><th>URL</th><th>Description</th><th>Filters / Body</th></tr></thead>
     <tbody>
-      <tr><td><span class="method GET">GET</span></td><td><code>/api/reports</code></td><td>List all reports with zone &amp; sensor</td><td><code>?status=open</code> <code>?severity=critical</code> <code>?type=intrusion</code> <code>?search=</code></td></tr>
-      <tr><td><span class="method POST">POST</span></td><td><code>/api/reports</code></td><td>Submit a new incident report</td><td>title, type, severity, source, reporter_name</td></tr>
-      <tr><td><span class="method GET">GET</span></td><td><code>/api/reports/{id}</code></td><td>Get single report with relations</td><td>—</td></tr>
-      <tr><td><span class="method PUT">PUT</span></td><td><code>/api/reports/{id}</code></td><td>Update report (e.g. change status)</td><td>any field</td></tr>
-      <tr><td><span class="method DELETE">DELETE</span></td><td><code>/api/reports/{id}</code></td><td>Delete a report</td><td>—</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td><code>/api/reports</code></td><td>List all reports with zone &amp; urgency</td><td><code>?zone_id=</code> <code>?urgency_id=</code> <code>?date=</code> <code>?search=</code></td></tr>
+      <tr><td><span class="method POST">POST</span></td><td><code>/api/reports</code></td><td>Submit a new sighting report</td><td>date, latitude, longitude, address, zone_id, color, number_of_people, name, phone, urgency_id</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td><code>/api/reports/{report_id}</code></td><td>Get single report with relations</td><td>—</td></tr>
+      <tr><td><span class="method PUT">PUT</span></td><td><code>/api/reports/{report_id}</code></td><td>Update report fields</td><td>any field</td></tr>
+      <tr><td><span class="method DELETE">DELETE</span></td><td><code>/api/reports/{report_id}</code></td><td>Delete a report</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Urgencies</h3>
+  <p>Lookup table referenced by <code>reports.urgency_id</code> (e.g. "Low", "Medium", "High", "Critical" — seed whatever levels you need).</p>
+  <table>
+    <thead><tr><th>Method</th><th>URL</th><th>Description</th><th>Filters / Body</th></tr></thead>
+    <tbody>
+      <tr><td><span class="method GET">GET</span></td><td><code>/api/urgencies</code></td><td>List all urgency levels</td><td>—</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td><code>/api/urgencies</code></td><td>Create a new urgency level</td><td>urgency_level</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td><code>/api/urgencies/{urgency_id}</code></td><td>Get a single urgency level</td><td>—</td></tr>
+      <tr><td><span class="method PUT">PUT</span></td><td><code>/api/urgencies/{urgency_id}</code></td><td>Rename an urgency level</td><td>urgency_level</td></tr>
+      <tr><td><span class="method DELETE">DELETE</span></td><td><code>/api/urgencies/{urgency_id}</code></td><td>Delete an urgency level</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Live Reports <span class="pill pill-yellow">incident / sensor alerts</span></h3>
+  <p>This is what used to be called <strong>Reports</strong> before the sighting-reports table above took over the <code>/api/reports</code> name. Same UUID-based schema as before, just moved to <code>/api/live-reports</code>.</p>
+  <table>
+    <thead><tr><th>Method</th><th>URL</th><th>Description</th><th>Filters / Body</th></tr></thead>
+    <tbody>
+      <tr><td><span class="method GET">GET</span></td><td><code>/api/live-reports</code></td><td>List all live reports with zone &amp; sensor</td><td><code>?status=open</code> <code>?severity=critical</code> <code>?type=intrusion</code> <code>?search=</code></td></tr>
+      <tr><td><span class="method POST">POST</span></td><td><code>/api/live-reports</code></td><td>Submit a new incident report</td><td>title, type, severity, source, reporter_name</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td><code>/api/live-reports/{id}</code></td><td>Get single live report with relations</td><td>—</td></tr>
+      <tr><td><span class="method PUT">PUT</span></td><td><code>/api/live-reports/{id}</code></td><td>Update live report (e.g. change status)</td><td>any field</td></tr>
+      <tr><td><span class="method DELETE">DELETE</span></td><td><code>/api/live-reports/{id}</code></td><td>Delete a live report</td><td>—</td></tr>
     </tbody>
   </table>
 
@@ -389,11 +426,14 @@ Documents\Dev\costal-back\Coastal-Border-backend\</pre>
   <pre><span class="url">http://localhost:8000/api/zones</span>
 <span class="url">http://localhost:8000/api/sensors</span>
 <span class="url">http://localhost:8000/api/reports</span>
+<span class="url">http://localhost:8000/api/urgencies</span>
+<span class="url">http://localhost:8000/api/live-reports</span>
 <span class="url">http://localhost:8000/api/sensor-readings</span>
 
 <span class="comment"># With filters</span>
-<span class="url">http://localhost:8000/api/reports?status=open</span>
-<span class="url">http://localhost:8000/api/reports?severity=critical</span>
+<span class="url">http://localhost:8000/api/reports?zone_id=</span>
+<span class="url">http://localhost:8000/api/live-reports?status=open</span>
+<span class="url">http://localhost:8000/api/live-reports?severity=critical</span>
 <span class="url">http://localhost:8000/api/sensors?status=alert</span></pre>
 
   <h3>Option B — cURL (all request types)</h3>
@@ -420,8 +460,38 @@ Documents\Dev\costal-back\Coastal-Border-backend\</pre>
      -H "Accept: application/json" \
      -d '{"status": "breach"}'</span></pre>
 
-  <p><strong>POST — Submit an incident report:</strong></p>
+  <p><strong>POST — Create an urgency level (do this first — reports need one):</strong></p>
+  <pre><span class="cmd">curl -X POST http://localhost:8000/api/urgencies \
+     -H "Content-Type: application/json" \
+     -H "Accept: application/json" \
+     -d '{"urgency_level": "High"}'</span></pre>
+
+  <p><strong>POST — Submit a sighting report:</strong></p>
   <pre><span class="cmd">curl -X POST http://localhost:8000/api/reports \
+     -H "Content-Type: application/json" \
+     -H "Accept: application/json" \
+     -d '{
+       "date": "2026-07-04",
+       "latitude": -4.05,
+       "longitude": 39.66,
+       "address": "North Beach Access Road",
+       "zone_id": "paste-zone-uuid-here",
+       "color": "blue",
+       "number_of_people": 3,
+       "description": "Three individuals seen approaching the shoreline at dusk.",
+       "name": "Jane Reporter",
+       "phone": "+254712345678",
+       "urgency_id": 1
+     }'</span></pre>
+
+  <p><strong>PUT — Update a report's urgency:</strong></p>
+  <pre><span class="cmd">curl -X PUT http://localhost:8000/api/reports/{report_id-here} \
+     -H "Content-Type: application/json" \
+     -H "Accept: application/json" \
+     -d '{"urgency_id": 2}'</span></pre>
+
+  <p><strong>POST — Submit an incident report (live reports):</strong></p>
+  <pre><span class="cmd">curl -X POST http://localhost:8000/api/live-reports \
      -H "Content-Type: application/json" \
      -H "Accept: application/json" \
      -d '{
@@ -434,8 +504,8 @@ Documents\Dev\costal-back\Coastal-Border-backend\</pre>
        "reporter_contact": "system@local"
      }'</span></pre>
 
-  <p><strong>PUT — Change report status to investigating:</strong></p>
-  <pre><span class="cmd">curl -X PUT http://localhost:8000/api/reports/{report-id-here} \
+  <p><strong>PUT — Change live report status to investigating:</strong></p>
+  <pre><span class="cmd">curl -X PUT http://localhost:8000/api/live-reports/{id-here} \
      -H "Content-Type: application/json" \
      -H "Accept: application/json" \
      -d '{"status": "investigating"}'</span></pre>
@@ -451,8 +521,8 @@ Documents\Dev\costal-back\Coastal-Border-backend\</pre>
        "triggered": false
      }'</span></pre>
 
-  <p><strong>DELETE — Remove a report:</strong></p>
-  <pre><span class="cmd">curl -X DELETE http://localhost:8000/api/reports/{report-id-here} \
+  <p><strong>DELETE — Remove a live report:</strong></p>
+  <pre><span class="cmd">curl -X DELETE http://localhost:8000/api/live-reports/{id-here} \
      -H "Accept: application/json"</span></pre>
 
   <h3>Option C — Postman (Recommended)</h3>
@@ -464,7 +534,7 @@ Documents\Dev\costal-back\Coastal-Border-backend\</pre>
     <li>For POST/PUT requests, set: <code>Content-Type: application/json</code> and use the <strong>Body → raw → JSON</strong> tab</li>
     <li>Send <code>GET {{base_url}}/zones</code> — you should see the 5 seeded zones</li>
     <li>Copy a zone <code>id</code> from the response and test <code>GET {{base_url}}/zones/{id}</code></li>
-    <li>Test filtering: <code>GET {{base_url}}/reports?severity=critical</code></li>
+    <li>Test filtering: <code>GET {{base_url}}/live-reports?severity=critical</code></li>
   </ol>
 
   <div class="alert success">
@@ -506,10 +576,20 @@ Documents\Dev\costal-back\Coastal-Border-backend\</pre>
              update: (id: string, d: any) => request(`/sensors/${id}`, { method: <span class="val">'PUT'</span>, body: JSON.stringify(d) }),
              remove: (id: string) => request(`/sensors/${id}`, { method: <span class="val">'DELETE'</span> }) },
 
+  <span class="comment">// New sighting reports (report_id, zone_id, urgency_id, ...)</span>
   reports: { list: (params?: string) => request(`/reports${params || ''}`),
              create: (d: any) => request(<span class="val">'/reports'</span>, { method: <span class="val">'POST'</span>, body: JSON.stringify(d) }),
-             update: (id: string, d: any) => request(`/reports/${id}`, { method: <span class="val">'PUT'</span>, body: JSON.stringify(d) }),
-             remove: (id: string) => request(`/reports/${id}`, { method: <span class="val">'DELETE'</span> }) },
+             update: (id: number, d: any) => request(`/reports/${id}`, { method: <span class="val">'PUT'</span>, body: JSON.stringify(d) }),
+             remove: (id: number) => request(`/reports/${id}`, { method: <span class="val">'DELETE'</span> }) },
+
+  urgencies: { list: () => request(<span class="val">'/urgencies'</span>),
+             create: (d: any) => request(<span class="val">'/urgencies'</span>, { method: <span class="val">'POST'</span>, body: JSON.stringify(d) }) },
+
+  <span class="comment">// Old incident/sensor-alert reports, moved from /reports to /live-reports</span>
+  liveReports: { list: (params?: string) => request(`/live-reports${params || ''}`),
+             create: (d: any) => request(<span class="val">'/live-reports'</span>, { method: <span class="val">'POST'</span>, body: JSON.stringify(d) }),
+             update: (id: string, d: any) => request(`/live-reports/${id}`, { method: <span class="val">'PUT'</span>, body: JSON.stringify(d) }),
+             remove: (id: string) => request(`/live-reports/${id}`, { method: <span class="val">'DELETE'</span> }) },
 
   readings:{ list: (params?: string) => request(`/sensor-readings${params || ''}`),
              create: (d: any) => request(<span class="val">'/sensor-readings'</span>, { method: <span class="val">'POST'</span>, body: JSON.stringify(d) }) },
@@ -526,8 +606,10 @@ Documents\Dev\costal-back\Coastal-Border-backend\</pre>
 <span class="comment">// Replace fetchData with:</span>
 <span class="key">const</span> fetchData = useCallback(<span class="key">async</span> (isRefresh = false) => {
   if (isRefresh) setRefreshing(true);
+  <span class="comment">// NOTE: the dashboard's incident-alert feed is now api.liveReports (was api.reports)</span>
+  <span class="comment">// api.reports is now the new zone/urgency sighting-reports endpoint — wire it up separately.</span>
   <span class="key">const</span> [reportData, sensorData, zoneData] = await Promise.all([
-    api.reports.list(),
+    api.liveReports.list(),
     api.sensors.list(),
     api.zones.list(),
   ]);
@@ -539,13 +621,13 @@ Documents\Dev\costal-back\Coastal-Border-backend\</pre>
 }, []);</pre>
 
   <h3>Step 3 — Replace Supabase calls in each page</h3>
-  <p>Each page that writes to Supabase also needs to be updated. Example for <code>Reports.tsx</code>:</p>
+  <p>Each page that writes to Supabase also needs to be updated. Example for <code>Reports.tsx</code> (the incident-alert page — this maps to <code>live-reports</code>, not the new <code>reports</code> table):</p>
   <pre><span class="comment">// Old (Supabase):</span>
 await supabase.from(<span class="val">'reports'</span>).update({ status }).eq(<span class="val">'id'</span>, id);
 
 <span class="comment">// New (Laravel API):</span>
 <span class="key">import</span> { api } <span class="key">from</span> <span class="val">'../lib/api'</span>;
-await api.reports.update(id, { status });</pre>
+await api.liveReports.update(id, { status });</pre>
 
   <p>Example for <code>Sensors.tsx</code> — adding a sensor:</p>
   <pre><span class="comment">// Old (Supabase):</span>

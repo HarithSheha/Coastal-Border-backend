@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ZoneController;
 use App\Http\Controllers\Api\SensorController;
 use App\Http\Controllers\Api\ReportController;
@@ -21,6 +22,10 @@ Route::get('/', fn () => response()->json([
         'sensor_readings' => url('/api/sensor-readings'),
     ],
 ]));
+
+Route::post('/login',  [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout']);
+Route::get('/me',      [AuthController::class, 'me']);
 
 Route::apiResource('zones', ZoneController::class);
 Route::apiResource('sensors', SensorController::class);

@@ -12,6 +12,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(UserSeeder::class);
+
         // ── Zones ──────────────────────────────────────────────────────────
         $zones = collect([
             ['name' => 'North Perimeter',     'description' => 'Northern coastal border zone with high foot traffic.',      'type' => 'restricted', 'status' => 'active',   'color' => '#ef4444', 'x_percent' => 5,  'y_percent' => 5,  'width_percent' => 30, 'height_percent' => 25],

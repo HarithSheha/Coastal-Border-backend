@@ -29,6 +29,7 @@ class Report extends Model
 
     public function urgency(): BelongsTo
     {
-        return $this->belongsTo(Urgency::class);
+        // 'urgency_id' on both sides — must be explicit since the related PK is non-standard
+        return $this->belongsTo(Urgency::class, 'urgency_id', 'urgency_id');
     }
 }

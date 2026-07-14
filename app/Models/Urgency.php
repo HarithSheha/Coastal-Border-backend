@@ -15,6 +15,6 @@ class Urgency extends Model
 
     public function reports(): HasMany
     {
-        return $this->hasMany(Report::class);
+        return $this->hasMany(Report::class, 'urgency_id', 'urgency_id');
     }
 }

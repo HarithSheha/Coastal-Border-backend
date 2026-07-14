@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\LiveReportController;
 use App\Http\Controllers\Api\UrgencyController;
 use App\Http\Controllers\Api\SensorReadingController;
+use App\Http\Controllers\Api\PhotoUploadController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => response()->json([
@@ -33,3 +34,4 @@ Route::apiResource('reports', ReportController::class);
 Route::apiResource('urgencies', UrgencyController::class);
 Route::apiResource('live-reports', LiveReportController::class);
 Route::apiResource('sensor-readings', SensorReadingController::class)->only(['index', 'store', 'show']);
+Route::post('/upload-photo', [PhotoUploadController::class, 'store']);

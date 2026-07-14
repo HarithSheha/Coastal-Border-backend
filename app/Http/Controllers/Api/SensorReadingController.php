@@ -11,11 +11,11 @@ class SensorReadingController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $readings = SensorReading::with('sensor')
+        $readings = SensorReading::with(['sensor', 'sensor.zone'])
             ->when($request->sensor_id, fn ($q, $v) => $q->where('sensor_id', $v))
             ->when($request->triggered,  fn ($q)    => $q->where('triggered', true))
             ->orderByDesc('recorded_at')
-            ->limit(100)
+            ->limit(200)
             ->get();
 
         return response()->json($readings);

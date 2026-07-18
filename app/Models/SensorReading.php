@@ -11,7 +11,7 @@ class SensorReading extends Model
     use HasUuids;
 
     protected $fillable = [
-        'sensor_id', 'value', 'unit', 'triggered', 'recorded_at',
+        'sensor_id', 'value', 'unit', 'triggered', 'recorded_at', 'status',
     ];
 
     protected $casts = [

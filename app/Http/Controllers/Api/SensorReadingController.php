@@ -40,6 +40,17 @@ class SensorReadingController extends Controller
 
     public function show(SensorReading $sensorReading): JsonResponse
     {
-        return response()->json($sensorReading->load('sensor'));
+        return response()->json($sensorReading->load(['sensor', 'sensor.zone']));
+    }
+
+    public function update(Request $request, SensorReading $sensorReading): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => 'required|in:unresolved,resolved',
+        ]);
+
+        $sensorReading->update($data);
+
+        return response()->json($sensorReading->load(['sensor', 'sensor.zone']));
     }
 }

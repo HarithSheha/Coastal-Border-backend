@@ -11,9 +11,12 @@ class Report extends Model
 
     protected $fillable = [
         'date', 'latitude', 'longitude', 'address', 'zone_id',
-        'color', 'number_of_people', 'description', 'photo',
-        'name', 'phone', 'urgency_id',
+        'color', 'number_of_people', 'description', 'photo', 'photo_data',
+        'name', 'phone', 'urgency_id', 'status',
     ];
+
+    // Never send the raw binary through the JSON list — only via the dedicated serve endpoint
+    protected $hidden = ['photo_data'];
 
     protected $casts = [
         'date'             => 'date',

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Report;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class ReportController extends Controller
 {
@@ -22,7 +23,9 @@ class ReportController extends Controller
             }))
             ->orderByDesc('date')
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            // Tell the frontend whether a photo is available without sending the raw data
+            ->map(fn ($r) => array_merge($r->toArray(), ['has_photo' => !is_null($r->photo_data)]));
 
         return response()->json($reports);
     }
@@ -38,20 +41,56 @@ class ReportController extends Controller
             'color'            => 'required|string|max:50',
             'number_of_people' => 'required|integer|min:0',
             'description'      => 'nullable|string',
-            'photo'            => 'nullable|string|max:255',
+            'photo'            => 'nullable',
             'name'             => 'required|string|max:100',
             'phone'            => 'required|string|max:20',
             'urgency_id'       => 'required|exists:urgencies,urgency_id',
         ]);
 
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $data['photo']      = $file->getClientOriginalName();
+            $data['photo_data'] = base64_encode(file_get_contents($file->path()));
+        }
+
         $report = Report::create($data);
 
-        return response()->json($report->load(['zone', 'urgency']), 201);
+        $result = array_merge($report->load(['zone', 'urgency'])->toArray(), [
+            'has_photo' => !is_null($report->photo_data),
+        ]);
+
+        return response()->json($result, 201);
     }
 
     public function show(Report $report): JsonResponse
     {
-        return response()->json($report->load(['zone', 'urgency']));
+        $result = array_merge($report->load(['zone', 'urgency'])->toArray(), [
+            'has_photo' => !is_null($report->photo_data),
+        ]);
+        return response()->json($result);
+    }
+
+    /**
+     * Serve the stored photo binary directly from the database.
+     */
+    public function servePhoto(Report $report): Response
+    {
+        if (is_null($report->photo_data)) {
+            abort(404);
+        }
+
+        $binary   = base64_decode($report->photo_data);
+        $mimeType = 'image/jpeg';
+
+        // Detect PNG from magic bytes
+        if (str_starts_with($binary, "\x89PNG")) {
+            $mimeType = 'image/png';
+        }
+
+        return response($binary, 200, [
+            'Content-Type'  => $mimeType,
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
     }
 
     public function update(Request $request, Report $report): JsonResponse
@@ -65,15 +104,26 @@ class ReportController extends Controller
             'color'            => 'sometimes|string|max:50',
             'number_of_people' => 'sometimes|integer|min:0',
             'description'      => 'nullable|string',
-            'photo'            => 'nullable|string|max:255',
+            'photo'            => 'sometimes|nullable|string|max:255',
             'name'             => 'sometimes|string|max:100',
             'phone'            => 'sometimes|string|max:20',
             'urgency_id'       => 'sometimes|exists:urgencies,urgency_id',
+            'status'           => 'sometimes|in:unresolved,resolved',
         ]);
+
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $data['photo']      = $file->getClientOriginalName();
+            $data['photo_data'] = base64_encode(file_get_contents($file->path()));
+        }
 
         $report->update($data);
 
-        return response()->json($report->load(['zone', 'urgency']));
+        $result = array_merge($report->load(['zone', 'urgency'])->toArray(), [
+            'has_photo' => !is_null($report->photo_data),
+        ]);
+
+        return response()->json($result);
     }
 
     public function destroy(Report $report): JsonResponse

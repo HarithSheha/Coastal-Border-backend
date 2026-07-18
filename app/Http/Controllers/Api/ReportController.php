@@ -7,6 +7,7 @@ use App\Models\Report;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
 
 class ReportController extends Controller
 {
@@ -48,9 +49,17 @@ class ReportController extends Controller
         ]);
 
         if ($request->hasFile('photo')) {
+            // Web / direct multipart upload
             $file = $request->file('photo');
             $data['photo']      = $file->getClientOriginalName();
             $data['photo_data'] = base64_encode(file_get_contents($file->path()));
+        } elseif (!empty($data['photo'])) {
+            // Mobile app flow: photo was uploaded via /upload-photo first;
+            // the file now lives in storage/app/public — capture binary before it can be lost
+            $filename = $data['photo'];
+            if (Storage::disk('public')->exists($filename)) {
+                $data['photo_data'] = base64_encode(Storage::disk('public')->get($filename));
+            }
         }
 
         $report = Report::create($data);
@@ -115,6 +124,12 @@ class ReportController extends Controller
             $file = $request->file('photo');
             $data['photo']      = $file->getClientOriginalName();
             $data['photo_data'] = base64_encode(file_get_contents($file->path()));
+        } elseif (!empty($data['photo']) && $data['photo'] !== $report->photo) {
+            // Mobile app updated the photo filename — capture binary from storage
+            $filename = $data['photo'];
+            if (Storage::disk('public')->exists($filename)) {
+                $data['photo_data'] = base64_encode(Storage::disk('public')->get($filename));
+            }
         }
 
         $report->update($data);

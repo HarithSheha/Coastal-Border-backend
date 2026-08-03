@@ -7,7 +7,7 @@ use App\Models\Report;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
@@ -25,7 +25,6 @@ class ReportController extends Controller
             ->orderByDesc('date')
             ->orderByDesc('created_at')
             ->get()
-            // Tell the frontend whether a photo is available without sending the raw data
             ->map(fn ($r) => array_merge($r->toArray(), ['has_photo' => !is_null($r->photo_data)]));
 
         return response()->json($reports);
@@ -49,16 +48,17 @@ class ReportController extends Controller
         ]);
 
         if ($request->hasFile('photo')) {
-            // Web / direct multipart upload
+            // Web frontend: photo file sent directly in this request
             $file = $request->file('photo');
             $data['photo']      = $file->getClientOriginalName();
             $data['photo_data'] = base64_encode(file_get_contents($file->path()));
         } elseif (!empty($data['photo'])) {
-            // Mobile app flow: photo was uploaded via /upload-photo first;
-            // the file now lives in storage/app/public — capture binary before it can be lost
-            $filename = $data['photo'];
-            if (Storage::disk('public')->exists($filename)) {
-                $data['photo_data'] = base64_encode(Storage::disk('public')->get($filename));
+            // Mobile app: photo was uploaded separately via POST /upload-photo.
+            // The binary is waiting in the photo_staging table — move it here.
+            $staged = DB::table('photo_staging')->where('filename', $data['photo'])->first();
+            if ($staged) {
+                $data['photo_data'] = $staged->photo_data;
+                DB::table('photo_staging')->where('filename', $data['photo'])->delete();
             }
         }
 
@@ -91,7 +91,6 @@ class ReportController extends Controller
         $binary   = base64_decode($report->photo_data);
         $mimeType = 'image/jpeg';
 
-        // Detect PNG from magic bytes
         if (str_starts_with($binary, "\x89PNG")) {
             $mimeType = 'image/png';
         }
@@ -121,14 +120,16 @@ class ReportController extends Controller
         ]);
 
         if ($request->hasFile('photo')) {
+            // Web frontend: file sent directly
             $file = $request->file('photo');
             $data['photo']      = $file->getClientOriginalName();
             $data['photo_data'] = base64_encode(file_get_contents($file->path()));
         } elseif (!empty($data['photo']) && $data['photo'] !== $report->photo) {
-            // Mobile app updated the photo filename — capture binary from storage
-            $filename = $data['photo'];
-            if (Storage::disk('public')->exists($filename)) {
-                $data['photo_data'] = base64_encode(Storage::disk('public')->get($filename));
+            // Mobile app sent a new filename — pull binary from staging
+            $staged = DB::table('photo_staging')->where('filename', $data['photo'])->first();
+            if ($staged) {
+                $data['photo_data'] = $staged->photo_data;
+                DB::table('photo_staging')->where('filename', $data['photo'])->delete();
             }
         }
 

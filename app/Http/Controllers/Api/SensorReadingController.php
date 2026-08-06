@@ -21,6 +21,14 @@ class SensorReadingController extends Controller
         return response()->json($readings);
     }
 
+    public function stats(): JsonResponse
+    {
+        return response()->json([
+            'total'      => SensorReading::count(),
+            'unresolved' => SensorReading::where('status', 'unresolved')->count(),
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([

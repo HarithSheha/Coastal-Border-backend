@@ -34,5 +34,6 @@ Route::apiResource('reports', ReportController::class);
 Route::get('/reports/{report}/photo', [ReportController::class, 'servePhoto']);
 Route::apiResource('urgencies', UrgencyController::class);
 Route::apiResource('live-reports', LiveReportController::class);
+Route::get('/sensor-readings/stats', [SensorReadingController::class, 'stats']);
 Route::apiResource('sensor-readings', SensorReadingController::class)->only(['index', 'store', 'show', 'update']);
 Route::post('/upload-photo', [PhotoUploadController::class, 'store']);

@@ -13,7 +13,16 @@ class ReportController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        // Exclude photo_data (LONGTEXT) from the SELECT — it's never sent to the frontend
+        // and loading large binaries for every report can exhaust PHP memory.
+        // Compute has_photo as a SQL boolean so the column flag is still accurate.
         $reports = Report::with(['zone', 'urgency'])
+            ->select([
+                'report_id', 'date', 'latitude', 'longitude', 'address',
+                'zone_id', 'color', 'number_of_people', 'description', 'photo',
+                'name', 'phone', 'urgency_id', 'status', 'created_at', 'updated_at',
+                DB::raw('(photo_data IS NOT NULL) as has_photo'),
+            ])
             ->when($request->zone_id,    fn ($q, $v) => $q->where('zone_id', $v))
             ->when($request->urgency_id, fn ($q, $v) => $q->where('urgency_id', $v))
             ->when($request->date,       fn ($q, $v) => $q->whereDate('date', $v))
@@ -25,7 +34,7 @@ class ReportController extends Controller
             ->orderByDesc('date')
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn ($r) => array_merge($r->toArray(), ['has_photo' => !is_null($r->photo_data)]));
+            ->map(fn ($r) => array_merge($r->toArray(), ['has_photo' => (bool) $r->has_photo]));
 
         return response()->json($reports);
     }
